@@ -1,4 +1,4 @@
-F = 500; 
+F_load = 500; 
 ndof = 18;
 nelm  = 14;
 
@@ -40,6 +40,21 @@ for i = bc_nodes
 end
 
 f_ext = zeros(ndof, 1);
-f_ext(10) = -F;
+f_ext(10) = -F_load;
+
+Le =[1;
+    1;
+    1;
+    1;
+    sqrt(2);
+    1;
+    1;
+    1;
+    1;
+    sqrt(2);
+    1;
+    sqrt(2);
+    1;
+    sqrt(2)];
 
 [Ex, Ey] = coordxtr(Edof,Coord,Dof,nen);
