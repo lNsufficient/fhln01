@@ -49,9 +49,25 @@ V_max = maxMass/density;
 A_init = maxMass/(l*density);
 
 TOL = 1e-2;
+tol_c = 1e-4;
 
 %% Optimization:
+lambda_min=.1;
+lambda_max=100;
+
+x = A_init*ones(nelm,1);
+
+
+x_old = inf;
+nbr_runs = 0;
 while norm(x - x_old) > TOL
+    %% Calculate new K
+    K = zeros(ndof);
+    for i = 1:nelm
+        edof = Edof(i, 2:5);
+        K(edof, edof) = K(edof, edof) + K_all{i}*x(i);
+    end
+    
     u = solveq(K,F,bc);
     %% Calculate derivatives
     C = zeros(nelm,1);
@@ -60,28 +76,37 @@ while norm(x - x_old) > TOL
         le = Le(i);
         ue = u(edof);
         Ke0 = K_all{i};
-        C(i) = le/(ue'*Ke0*ue);
+        C(i) = (ue'*Ke0*ue)*x(i)^2/le;
     end
-    
-    
+    if any(abs(C) < tol_c)
+        disp('C is very small')
+    end
+    lambdastar = fzero(@(lambda) dphidlambda(lambda, Le, C, A_max, A_min, V_max),[0 lambda_max]);
     
     %% Get the new x
     x_old = x;
-    x = xstar(lambda);
-    
-    %% Calculate new K
-    K = zeros(nelm);
-    for i = 1:nelm
-        edof = Edof(i, 2:5);
-        K(edof, edof) = K(edof, edof) + K_all{i}*x(i);
+    [x, errors] = xstar(lambdastar,C, A_max, A_min);
+    if errors
+        disp('hits the limits....');
     end
+    nbr_runs = nbr_runs+1;
 end
 
+%% Solve the system for u
+u = solveq(K,F,bc);
+Ed = extract(Edof, u);
+magnfac = 1;
+plotpar = [1 3 1];
+fac = 1000;
 
+
+myeldisp2(Ex,Ey,Ed,plotpar,magnfac,x,fac)
+
+Ep = [ones(nelm, 1)*E, x];
+es = bar2s(Ex,Ey,Ep,Ed);
 parameter1=1;
 parameter2=2;
-lambda_min=.1;
-lambda_max=100;
 
 
-lambdastar = fzero(@(lambda) dphidlambda(lambda,parameter1,parameter2),[lambda_min lambda_max])
+
+

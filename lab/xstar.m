@@ -1,11 +1,16 @@
-function xstar=xstar(lambda,parameter1,parameter2)
+function [xstar, errors]=xstar(lambda,C, A_max, A_min)
 
-tmp=lambda*parameter1*parameter2;
+    %xstar = C*lambda;
+    xstar = sqrt(C/lambda);
+    
+    too_big = (xstar > A_max);
+    xstar(too_big) = A_max;
 
-if tmp<0
-   xstar=0.5;
-else
-   xstar=1;
+    too_small = (xstar < A_min);
+    xstar(too_small) = A_min;
+    
+    errors = sum(too_big) + sum(too_small);
+
 end
   
 

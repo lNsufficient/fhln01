@@ -1,5 +1,4 @@
-function out=dphi_dlambda(lambda,parameter1,parameter2)
+function dphidlambda=dphidlambda(lambda, l, C, A_max, A_min, V_max)
 
-
-
-out=(lambda+1)^2-parameter1-parameter2+xstar(lambda,parameter1,parameter2);
+    dphidlambda = g1(l, xstar(lambda, C, A_max, A_min), V_max);
+end
