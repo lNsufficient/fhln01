@@ -2,8 +2,7 @@ clear;
 addpath '../calfem-3.4/fem';
 
 %% Setup problem parameters
-E = 210*10^3*10^3; %Pa
-A_max = 0.1; %m^2
+E = 210*10^3*10^6; %Pa
 maxMass = 1000; %kg
 density = 7800; %kg/m^3
 l = 10+sqrt(2)*4; %m total length of all bars
@@ -20,6 +19,8 @@ A0 = 1; %so that K =K_0*A
 Area = ones(nelm, 1)*A0;
 fac = 1; %area factor
 
+figure(1)
+clf;
 myeldraw2(Ex, Ey, plotpar, Area, fac) %Draw the geometry
 
 %% Set up the K matrix. 
@@ -43,24 +44,24 @@ magnfac = 10;
 myeldisp2(Ex,Ey,ed,plotpar,magnfac,Area,fac)
 
 %% Formulate optimization problem
-A_min = 0;
-A_max = 0.1;
+A_min = 1e-4;
+A_max = 1e-2
 V_max = maxMass/density;
 A_init = maxMass/(l*density);
 
-TOL = 1e-2;
-tol_c = 1e-4;
+TOL = 1e-9;
+tol_c = 1e-6;
 
 %% Optimization:
-lambda_min=.1;
-lambda_max=100;
+lambda_min=1e-9;
+lambda_max=1e9;
 
 x = A_init*ones(nelm,1);
 
 
 x_old = inf;
 nbr_runs = 0;
-while norm(x - x_old) > TOL
+while norm(x - x_old,2) > TOL
     %% Calculate new K
     K = zeros(ndof);
     for i = 1:nelm
@@ -93,20 +94,34 @@ while norm(x - x_old) > TOL
 end
 
 %% Solve the system for u
+%K has to be updated with the new x. 
+K = zeros(ndof);
+    for i = 1:nelm
+        edof = Edof(i, 2:5);
+        K(edof, edof) = K(edof, edof) + K_all{i}*x(i);
+    end
+
 u = solveq(K,F,bc);
 Ed = extract(Edof, u);
 magnfac = 1;
 plotpar = [1 3 1];
 fac = 1000;
 
-
+figure(2);
+clf;
 myeldisp2(Ex,Ey,Ed,plotpar,magnfac,x,fac)
 
 Ep = [ones(nelm, 1)*E, x];
-es = bar2s(Ex,Ey,Ep,Ed);
-parameter1=1;
-parameter2=2;
 
+%DETTA FUNKAR INTE!!! :(
+%es = bar2s(Ex,Ey,Ep,Ed);
 
+%GÖR SÅ HÄR I STÄLLET!
+Es = zeros(size(x));
+for i = 1:nelm
+    Es(i) = bar2s(Ex(i,:), Ey(i,:), Ep(i,:), Ed(i,:));
+end
+
+sigma = Es./x
 
 
