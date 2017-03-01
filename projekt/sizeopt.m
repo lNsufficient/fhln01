@@ -27,16 +27,16 @@ myeldraw2(ex, ey, plotpar, Area, fac) %Draw the geometry
 V_max = 2000*1e-9; %m^3 - supposed to be 2000 mm^3
 d_max = 20*1e-3; %m, supposed to be 20 mm.
 d_min = 0.01*1e-7; %m TEST VARYING THIS ONE!
+d_min = 1e-8;
 
-E = 210*10^3*10^6; %Pa WARNING - THIS WAS GUESSED! 
+E = 210*10^3*10^6; %Pa %THis was chosen by us, but is okay. 
 
 %Calculate corresponding A_max and A_min respectively...
 A_max = (d_max/2)^2*pi;
 A_min = (d_min/2)^2*pi;
 
-A_init = V_max/l_tot;
-
-
+A_init = V_max/l_tot; %We are supposed to try a few different initial guesses here.
+%A_init = 1e-8;
 
 %A_max = 200;
 %% Set up the K matrix. 
@@ -68,6 +68,8 @@ myeldisp2(ex,ey,ed,plotpar,magnfac,x,fac)
 %% Set up the optimization problem:
 
 TOL = 1e-11; %Try decreasing if there are problems.
+TOL = 1e-14; %Remember to compare this value to the current value of A_min.
+%TOL = 1e-8; %Fewer elements hit A_min as loop breaks before.
 tol_c = 1e-6; %This is only for debugging purposes.
 
 lambda_min = 1e-9;
@@ -104,15 +106,15 @@ while norm(x - x_old,inf) > TOL
     %% Get the new x
     x_old = x;
     [x, errors] = xstar(lambdastar, C, A_max, A_min);
-    if any(errors == 1)
-        disp('hits the upper limits....');
-    end
-    if any(errors == -1)
-        disp('hits the lower limits.....');
-    end
-    nbr_runs = nbr_runs + 1;
-    
-    disp(sprintf('Current run was: %d', nbr_runs));
+%     if any(errors == 1)
+%         disp('hits the upper limits....');
+%     end
+%     if any(errors == -1)
+%         disp('hits the lower limits.....');
+%     end
+%     nbr_runs = nbr_runs + 1;
+%     
+%     disp(sprintf('Current run was: %d', nbr_runs));
 end
 
 %% Solve the system for u
@@ -130,11 +132,11 @@ clf;
 myeldisp2(ex, ey, ed, plotpar, magnfac, x, fac); 
 
 %% Calculate stresses
-ep = [ones(nele, 1)*E, x];
+ep = [ones(nele, 1)*E, x]; %Är detta rätt? 
 
 es = zeros(size(x));
 for i = 1:nele
-    es(i) = bar2s(ex(i,:), ey(i,:), ep(i,:), ed(i,:));
+    es(i) = bar2s(ex(i,:), ey(i,:), ep(i,:), ed(i,:)); 
 end
 
 sigma = es./x;
@@ -154,4 +156,9 @@ ey_zero = ey(zero_ind,:);
 
 figure(3);
 hold on;
-myeldisp2(ex_zero, ey_zero, ed, plotpar, magnfac, x(zero_ind), fac); 
+myeldisp2(ex_zero, ey_zero, ed, plotpar, magnfac, x(zero_ind), fac);
+
+%% Investigates values for sigma
+other_ind = find(errors == 0); %We find the indecis of elements in the correct interval for A
+sigma(other_ind)-sqrt(lambdastar/E) %This should be zero. 
+%sqrt(lambdastar/E) is very small compared to sigma!!
