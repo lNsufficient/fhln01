@@ -45,7 +45,7 @@ myeldisp2(Ex,Ey,ed,plotpar,magnfac,Area,fac)
 
 %% Formulate optimization problem
 A_min = 1e-4;
-A_max = 1e-2
+A_max = 1e-1
 V_max = maxMass/density;
 A_init = maxMass/(l*density);
 
@@ -61,7 +61,7 @@ x = A_init*ones(nelm,1);
 
 x_old = inf;
 nbr_runs = 0;
-while norm(x - x_old,2) > TOL
+while norm(x - x_old,inf) > TOL
     %% Calculate new K
     K = zeros(ndof);
     for i = 1:nelm
