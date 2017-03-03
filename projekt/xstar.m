@@ -1,7 +1,8 @@
-function [xstar, errors]=xstar(lambda,C, A_max, A_min)
+function [xstar, errors]=xstar(lambda,C, A_max, A_min, alpha)
 
     %xstar = C*lambda;
-    xstar = sqrt(C/lambda);
+    eta = 1/(1+alpha);
+    xstar = (C/lambda).^eta;
     
     too_big = (xstar > A_max);
     xstar(too_big) = A_max;

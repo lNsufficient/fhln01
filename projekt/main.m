@@ -2,6 +2,7 @@ clear;
 
 addpath('..\calfem-3.4\')
 addpath('../calfem-3.4/')
+
 load geomSO
 
 %% Calculate element lengths:
@@ -29,7 +30,10 @@ d_max = 20*1e-3; %m, supposed to be 20 mm.
 d_min = 0.01*1e-7; %m TEST VARYING THIS ONE!
 d_min = 1e-8;
 
+alpha = 1; %%to make sure that eta = 1/2 inside xstar
+
 E = 210*10^3*10^6; %Pa %THis was chosen by us, but is okay. 
+%E = 210*10^3; %Pa %THis was chosen by us, but is okay. 
 
 %Calculate corresponding A_max and A_min respectively...
 A_max = (d_max/2)^2*pi;
@@ -45,10 +49,10 @@ K = zeros(ndof);
 %Here, A = 1, so K = K0*A
 ep = [ones(nele, 1)*E, ones(nele, 1)];
 K_all = cell(nele,1);
-for el = 1:nele;
+for el = 1:nele
     Ke = bar2e(ex(el, :), ey(el, :), ep(el,:));
     K_all{el} = Ke;
-    K(edof(el, 2:5), edof(el, 2:5)) = K(edof(el, 2:5), edof(el, 2:5)) + Ke;
+    %K(edof(el, 2:5), edof(el, 2:5)) = K(edof(el, 2:5), edof(el, 2:5)) + Ke;
 end
 
 x = ones(nele, 1)*A_init;
@@ -68,7 +72,7 @@ myeldisp2(ex,ey,ed,plotpar,magnfac,x,fac)
 %% Set up the optimization problem:
 
 TOL = 1e-11; %Try decreasing if there are problems.
-TOL = 1e-14; %Remember to compare this value to the current value of A_min.
+TOL = 1e-17; %Remember to compare this value to the current value of A_min.
 %TOL = 1e-8; %Fewer elements hit A_min as loop breaks before.
 tol_c = 1e-6; %This is only for debugging purposes.
 
@@ -79,8 +83,15 @@ x_old = inf;
 nbr_runs = 0;
 
 %% Optimization loop:
+load_old_opt = 0;
+if load_old_opt
+    load 'current_best.mat';
+    disp('===========USING OLD VALUES!!!!!===========');
+    %changes x to old best x
+    %changes nbr_runs to old nbr_runs
+end
 
-while norm(x - x_old,inf) > TOL
+while norm(x - x_old,2) > TOL
    %% Calculate the new K and corresponding u
    K = getK(K_all, x, edof, nele, ndof);
    
@@ -100,19 +111,18 @@ while norm(x - x_old,inf) > TOL
 %    if any(abs(C) < tol_c)
 %        disp('C is very small');
 %    end
-   
-    lambdastar = fzero(@(lambda) dphidlambda(lambda, le, C, A_max, A_min, V_max),[lambda_min lambda_max]);
+    lambdastar = fzero(@(lambda) dphidlambda(lambda, le, C, A_max, A_min, V_max, alpha),[lambda_min lambda_max]);
     
     %% Get the new x
     x_old = x;
-    [x, errors] = xstar(lambdastar, C, A_max, A_min);
+    [x, errors] = xstar(lambdastar, C, A_max, A_min, alpha);
 %     if any(errors == 1)
 %         disp('hits the upper limits....');
 %     end
 %     if any(errors == -1)
 %         disp('hits the lower limits.....');
 %     end
-%     nbr_runs = nbr_runs + 1;
+     nbr_runs = nbr_runs + 1;
 %     
 %     disp(sprintf('Current run was: %d', nbr_runs));
 end
@@ -160,5 +170,6 @@ myeldisp2(ex_zero, ey_zero, ed, plotpar, magnfac, x(zero_ind), fac);
 
 %% Investigates values for sigma
 other_ind = find(errors == 0); %We find the indecis of elements in the correct interval for A
-sigma(other_ind)-sqrt(lambdastar/E) %This should be zero. 
+deviation = norm(sigma(other_ind)-sqrt(lambdastar/E), inf) %This should be zero. 
 %sqrt(lambdastar/E) is very small compared to sigma!!
+save('current_best', 'x', 'nbr_runs');
