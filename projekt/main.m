@@ -3,11 +3,15 @@ clear;
 addpath('..\calfem-3.4\')
 addpath('../calfem-3.4/')
 
+run_case = 1;
+
+%%
 load geomSO
 
 %% Calculate element lengths:
 le = sqrt((ex(:,1) - ex(:,2)).^2 + (ey(:,1) - ey(:,2)).^2);
 l_tot = sum(le);
+
 
 %% Plot the Geometry
 figure(1);
@@ -15,6 +19,7 @@ clf;
 plotpar = [1 4 1];
 
 %specify area for each bar.
+
 A0 = 1;
 Area = ones(nele, 1)*A0;
 fac = 1; %area factor
@@ -24,13 +29,14 @@ clf;
 myeldraw2(ex, ey, plotpar, Area, fac) %Draw the geometry
 
 %% Parameters
-
 V_max = 2000*1e-9; %m^3 - supposed to be 2000 mm^3
+alpha = 1; %%to make sure that eta = 1/2 inside xstar
+
 d_max = 20*1e-3; %m, supposed to be 20 mm.
 d_min = 0.01*1e-7; %m TEST VARYING THIS ONE!
 d_min = 1e-8;
 
-alpha = 1; %%to make sure that eta = 1/2 inside xstar
+
 
 E = 210*10^3*10^6; %Pa %THis was chosen by us, but is okay. 
 %E = 210*10^3; %Pa %THis was chosen by us, but is okay. 
@@ -72,7 +78,7 @@ myeldisp2(ex,ey,ed,plotpar,magnfac,x,fac)
 %% Set up the optimization problem:
 
 TOL = 1e-11; %Try decreasing if there are problems.
-TOL = 1e-17; %Remember to compare this value to the current value of A_min.
+%TOL = 1e-17; %Remember to compare this value to the current value of A_min.
 %TOL = 1e-8; %Fewer elements hit A_min as loop breaks before.
 tol_c = 1e-6; %This is only for debugging purposes.
 
@@ -91,6 +97,9 @@ if load_old_opt
     %changes nbr_runs to old nbr_runs
 end
 
+res = [];
+
+
 while norm(x - x_old,2) > TOL
    %% Calculate the new K and corresponding u
    K = getK(K_all, x, edof, nele, ndof);
@@ -99,23 +108,23 @@ while norm(x - x_old,2) > TOL
    
    %% Calculate derivatives
    C = zeros(nele, 1);
-   
+   xk = x;
    for i = 1:nele
        edof_ele = edof(i, 2:5);
        l_ele = le(i);
        u_ele = u(edof_ele);
        Ke0 = K_all{i};
-       C(i) = (u_ele'*Ke0*u_ele)*x(i)^2/l_ele;
+       C(i) = (u_ele'*Ke0*u_ele)/l_ele;
    end
    
 %    if any(abs(C) < tol_c)
 %        disp('C is very small');
 %    end
-    lambdastar = fzero(@(lambda) dphidlambda(lambda, le, C, A_max, A_min, V_max, alpha),[lambda_min lambda_max]);
+    lambdastar = fzero(@(lambda) dphidlambda(lambda, le, C, xk, A_max, A_min, V_max, alpha),[lambda_min lambda_max]);
     
     %% Get the new x
     x_old = x;
-    [x, errors] = xstar(lambdastar, C, A_max, A_min, alpha);
+    [x, errors] = xstar(lambdastar, C, xk, A_max, A_min, alpha);
 %     if any(errors == 1)
 %         disp('hits the upper limits....');
 %     end
@@ -125,6 +134,7 @@ while norm(x - x_old,2) > TOL
      nbr_runs = nbr_runs + 1;
 %     
 %     disp(sprintf('Current run was: %d', nbr_runs));
+    res = [res; norm(x-x_old,2)];
 end
 
 %% Solve the system for u
