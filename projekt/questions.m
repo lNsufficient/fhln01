@@ -34,3 +34,5 @@
 % linjer då semilogy(res) plottas, men på fine mesh så blir de inte räta
 % (med positiv andraderivata), så konvergenshastigheten minskas hela tiden.
 % Ska det vara så?
+
+%Är det okej att anta att phi_i går att räkna bara på mittpunkten av ett element?

@@ -62,7 +62,7 @@ D = E/(1-nu^2)*[1 nu 0; nu 1 0; 0 0 (1-nu)/2];
 ep = [1, t];
 
 
-start_case = 4;
+start_case = 3;
 
 if start_case == 1
     x = 0.4*ones(nele, 1);
@@ -123,7 +123,7 @@ if load_coarse
     max_nbr_runs = 300;
 else
     TOL = 1.3e-1; %The tolerance is adjusted to number of elements
-    TOL=1e-5;
+    TOL=1e-6;
     max_nbr_runs = 50;
 end
 %TOL = 1e-17; %Remember to compare this value to the current value of A_min.
@@ -138,7 +138,7 @@ nbr_runs = 0;
 
 
 %% Optimization
-res = [];
+Res = [];
 
 
 
@@ -146,12 +146,42 @@ res = [];
 
 times = zeros(max_nbr_runs, 5);
 
+%% Preparations for filtering
+% Calculate mean coordinates for each element
+coord_mean = [mean(ex,2), mean(ey,2)];
+coord_mean = [coord_mean; mean(-ex,2), mean(ey,2)];
+
+
 %% FILTER
+filter_case = 2;
+if filter_case == 1
+    M = eye(nele);
+elseif filter_case == 2;
+    M = zeros(nele, nele);
+    R = w*2;
+    for i = 1:nele
+        coord_ele = coord_mean(i,:);
+        %This could have been done more efficient, dist(a,b) = dist(b,a)...
+        dists = sqrt((coord_mean(:,1) - coord_ele(1)).^2 + (coord_mean(:,2) - coord_ele(2)).^2);
+        phis = 3/(pi*R^2)*max(0, 1-dists/R);
+        phis = phis(1:nele) + phis(nele+1:end);
+        M(i,:) = phis'/sum(phis);
 
-M = eye(nele);
+        if mod(i,1e22) == 0
+            figure(8);
+            clf;
+            fill(ex', ey', M(i,:))
+            colorbar;
+        end
+    end  
+    
+end
 
+res = inf;
+x = M*x;
 
-while norm(x - x_old,2) > TOL
+while res > TOL
+    
 %while nbr_runs < max_nbr_runs
    nbr_runs = nbr_runs + 1;
    %% Calculate the new K and corresponding u
@@ -173,6 +203,9 @@ while norm(x - x_old,2) > TOL
        Ke0 = K_all{i};
        C(i) = (u_ele'*q*x(i)^(q-1)*Ke0*u_ele)/ae;
    end
+   
+   C = M'*C;
+   
    times(nbr_runs,3) = toc;
    
    tic
@@ -192,13 +225,22 @@ while norm(x - x_old,2) > TOL
 
 %     
 %     disp(sprintf('Current run was: %d', nbr_runs));
-    res = [res; norm(x-x_old,2)];
+    %% Filter the design variables
+    x = M*x;
+
+
+    res = norm(x-x_old,2);
+    disp(res)
+    Res = [Res; res];
 end
 
 
 
 
 %% Plot the displacements
+%Filter the optimal x
+x = M*x;
+
 x_opt = x;
 K = getK_sheet(K_all, x, q, edof, nele, ndof);
 u = solveq(K, F, bc);
@@ -206,10 +248,11 @@ ed = extract(edof,u);
 fac = 100000;
 
 figure(3);
-title(sprintf('Deformation of optimized structure,\n magnification factor %d',fac), 'interpreter', 'latex');
+
 clf;
 
 eldisp2(ex,ey,ed,plotpar,fac)
+title(sprintf('Deformation of optimized structure,\n magnification factor %d',fac), 'interpreter', 'latex');
 
 %%
 figure(4);
@@ -223,9 +266,9 @@ colorbar;
 figure(5);
 clf;
 subplot(2,1,1)
-plot(res);
+plot(Res);
 subplot(2,1,2)
-semilogy(res)
+semilogy(Res)
 
 %%
 figure(6)
