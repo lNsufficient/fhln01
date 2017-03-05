@@ -1,5 +1,13 @@
 clear;
-load MBBCoarseMesh
+
+addpath('../calfem-3.4/fem/')
+
+load_coarse = 0;
+if load_coarse
+    load MBBCoarseMesh
+else
+    load MBBFineMesh.mat
+end
 
 %% Plot the Geometry
 figure(1);
@@ -17,26 +25,32 @@ Area = ones(nele, 1)*A0;
 fac = 1; %area factor
 
 figure(1)
+title('Inital geometry')
 clf;
 myeldraw2(ex, ey, plotpar, Area, fac) %Draw the geometry
 
 
 %% Parameters
 
-t = 0.05; %thickness chosen by us
+t = 10*1e-3; %thickness chosen by us
 V_box = 0.3*0.1*t;
 V_max = 0.4*V_box;
 
 x_max = 1;
-x_min = 1e-3;
+x_min = 1e-4;
 
-q = 1;
+q = 3;
 alpha = 2;
 
-w = 0.3/42;%m, width, length over nbr elements in x direction
-h = 0.1/14;%m, hidth, height over nbr elements in y direction
-ae = t*w*h;
-
+if load_coarse
+    w = 0.3/42;%m, width, length over nbr elements in x direction
+    h = 0.1/14;%m, hidth, height over nbr elements in y direction
+    ae = t*w*h;
+else
+    h = 0.1/40;
+    w = 0.3/120;
+    ae = t*w*h;
+end
 
 E = 210*10^3*10^6; %Pa %THis was chosen by us, but is okay. Steel.
 nu = 0.27; %Steel, poissons ratio. 
@@ -47,8 +61,21 @@ D = E/(1-nu^2)*[1 nu 0; nu 1 0; 0 0 (1-nu)/2];
 %% Set up the K matrix. 
 ep = [1, t];
 
-x = 0.4*ones(nele, 1);
 
+start_case = 4;
+
+if start_case == 1
+    x = 0.4*ones(nele, 1);
+elseif start_case == 2
+    x = 0.1*ones(nele, 1);
+elseif start_case == 3
+    x = 0.01*ones(nele,1);
+elseif start_case == 4
+    load('simp_x_opt')
+    x = x_opt; 
+end
+    
+    
 K_all = cell(nele,1);
 for i = 1:nele
     K_all{i} = planqe(ex(i,:),ey(i,:),ep,D*1);
@@ -77,19 +104,34 @@ ed = extract(edof,u);
 fac = 100000;
 
 figure(2);
+title('All elements equal density, deformed');
 clf;
 
 eldisp2(ex,ey,ed,plotpar,fac)
 
 %% Set up the optimization problem:
 
-TOL = 7e-6; %Try decreasing if there are problems.
+if load_coarse
+    if q == 1
+        TOL = 1e-6; %Try decreasing if there are problems.
+    elseif q == 3
+        TOL = 1e-9;
+    end
+    if start_case == 4
+        TOL = 1.6e-11;
+    end
+    max_nbr_runs = 300;
+else
+    TOL = 1.3e-1; %The tolerance is adjusted to number of elements
+    TOL=1e-5;
+    max_nbr_runs = 50;
+end
 %TOL = 1e-17; %Remember to compare this value to the current value of A_min.
 %TOL = 1e-8; %Fewer elements hit A_min as loop breaks before.
 tol_c = 1e-6; %This is only for debugging purposes.
 
 lambda_min = 1e-9;
-lambda_max = 1e9;
+lambda_max = 1e5;
 
 x_old = inf;
 nbr_runs = 0;
@@ -98,39 +140,62 @@ nbr_runs = 0;
 %% Optimization
 res = [];
 
+
+
+
+
+times = zeros(max_nbr_runs, 5);
+
+%% FILTER
+
+M = eye(nele);
+
+
 while norm(x - x_old,2) > TOL
-    
+%while nbr_runs < max_nbr_runs
+   nbr_runs = nbr_runs + 1;
    %% Calculate the new K and corresponding u
+   tic
    K = getK_sheet(K_all, x, q, edof, nele, ndof);
+   times(nbr_runs,1) = toc;
    
+   tic
    u = solveq(K,F,bc);
-   
+   times(nbr_runs,2) = toc;
    %% Calculate derivatives
    C = zeros(nele, 1);
-
+   
+   tic 
    for i = 1:nele
        edof_ele = edof(i, 2:end);
        
        u_ele = u(edof_ele);
        Ke0 = K_all{i};
-       C(i) = (u_ele'*Ke0*u_ele)/ae;
+       C(i) = (u_ele'*q*x(i)^(q-1)*Ke0*u_ele)/ae;
    end
+   times(nbr_runs,3) = toc;
    
+   tic
    lambdastar = fzero(@(lambda) dphidlambda(lambda, ae*ones(nele,1), C, x, x_max, x_min, V_max, alpha),[lambda_min lambda_max])
+   times(nbr_runs,4) = toc;
     %% Get the new x
     x_old = x;
+    tic
     [x, errors] = xstar(lambdastar, C, x, x_max, x_min, alpha);
+    times(nbr_runs,5) = toc;
 %     if any(errors == 1)
 %         disp('hits the upper limits....');
 %     end
 %     if any(errors == -1)
 %         disp('hits the lower limits.....');
 %     end
-     nbr_runs = nbr_runs + 1;
+
 %     
 %     disp(sprintf('Current run was: %d', nbr_runs));
     res = [res; norm(x-x_old,2)];
 end
+
+
 
 
 %% Plot the displacements
@@ -141,9 +206,36 @@ ed = extract(edof,u);
 fac = 100000;
 
 figure(3);
+title(sprintf('Deformation of optimized structure,\n magnification factor %d',fac), 'interpreter', 'latex');
 clf;
 
 eldisp2(ex,ey,ed,plotpar,fac)
 
+%%
+figure(4);
+clf;
+
+fill(ex', ey', x)
+colorbar;
 
 
+%% Plot the residual
+figure(5);
+clf;
+subplot(2,1,1)
+plot(res);
+subplot(2,1,2)
+semilogy(res)
+
+%%
+figure(6)
+clf
+hist(x);
+save_str = sprintf('coarse_%d_TOL_%2.2g_alpha_%d', load_coarse, TOL, alpha)
+savefig(sprintf('%s.fig',save_str))
+
+%% Save optimal x
+x_opt = x;
+
+save('simp_x_opt', 'x_opt');
+save(save_str, 'x_opt');

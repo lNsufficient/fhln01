@@ -20,8 +20,17 @@
 %Kan vi på något sätt se om våra spänningar ser vettiga ut? 
 %Ja - de element som inte slagit i någon gräns ska ha samma spänning, 
 %sqrt(lambdastar/E).
+    %Varför stämmer då inte detta?
 
 %Vad händer om vi gör en urspriunglig gissning på något som är fel?
 
+%Hur ska man tänka kring tolerans?
 
+%Måste ae uppdateras som följd av deformering?
 
+%(Hur väljs alpha?)
+
+% Vad förväntar man sig för typ av konvergens? På coarse mesh blir det räta
+% linjer då semilogy(res) plottas, men på fine mesh så blir de inte räta
+% (med positiv andraderivata), så konvergenshastigheten minskas hela tiden.
+% Ska det vara så?
