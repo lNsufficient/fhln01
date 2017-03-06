@@ -293,7 +293,11 @@ end
 %x = M*x;
 
 x_opt = x;
-K = getK_sheet(K_all, x, q, edof, nele, ndof);
+if filter_case == 3
+    K = K;
+else
+    K = getK_sheet(K_all, x, q, edof, nele, ndof);
+end
 u = solveq(K, F, bc);
 ed = extract(edof,u);
 fac = 100000;
