@@ -174,7 +174,20 @@ elseif filter_case == 2;
             colorbar;
         end
     end  
+elseif filter_case == 3
+    r = 2*w;
+    ep = [1, 3];
+    K_filt = flw2i4e(ex, ey, ep, eye(3));
+    M_filt = flw2i4m(ex,ey,1);    
     
+    T_rows = nele; %osäker på denna, om element_indices är edof så är detta fel - annan enhet
+    %måste va lika många rader som (K+M)^-1
+    T_filt = zeros(T_rows, nele);
+    q = 1;
+    for i = 1:nele
+        element_indices = edof(i,2:end); %osäker på denna
+        [~, T_filt(element_indices,i)] = flw2i4e(ex(i,:), ey(i,:), ep, eye(3), q);
+    end
 end
 
 res = inf;
