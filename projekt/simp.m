@@ -2,7 +2,10 @@ clear;
 
 addpath('../calfem-3.4/fem/')
 
-load_coarse = 0;
+load_coarse = 1;
+filter_case = 3;
+start_case = 3;
+
 if load_coarse
     load MBBCoarseMesh
 else
@@ -17,6 +20,7 @@ nen = 4;
 [ex, ey] = coordxtr(edof,coord,dof,nen);
 nele = size(edof,1);
 ndof = length(F);
+nnod = max(max(enod(:,2:end))); %should be ndof/2;
 
 
 %specify area for each bar.
@@ -62,14 +66,18 @@ D = E/(1-nu^2)*[1 nu 0; nu 1 0; 0 0 (1-nu)/2];
 ep = [1, t];
 
 
-start_case = 3;
 
+if filter_case == 3
+    xdim = nnod;
+else
+    xdim = nele;
+end
 if start_case == 1
-    x = 0.4*ones(nele, 1);
+    x = 0.4*ones(xdim, 1);
 elseif start_case == 2
-    x = 0.1*ones(nele, 1);
+    x = 0.1*ones(xdim, 1);
 elseif start_case == 3
-    x = 0.01*ones(nele,1);
+    x = 0.01*ones(xdim,1);
 elseif start_case == 4
     load('simp_x_opt')
     x = x_opt; 
@@ -153,7 +161,7 @@ coord_mean = [coord_mean; mean(-ex,2), mean(ey,2)];
 
 
 %% FILTER
-filter_case = 2;
+
 if filter_case == 1
     M = eye(nele);
 elseif filter_case == 2;
@@ -173,25 +181,33 @@ elseif filter_case == 2;
             fill(ex', ey', M(i,:))
             colorbar;
         end
-    end  
+    end 
+    x = M*x;
 elseif filter_case == 3
     r = 2*w;
-    ep = [1, 3];
-    K_filt = flw2i4e(ex, ey, ep, eye(3));
-    M_filt = flw2i4m(ex,ey,1);    
+    ep_filt = [1, 3];
     
-    T_rows = nele; %osäker på denna, om element_indices är edof så är detta fel - annan enhet
-    %måste va lika många rader som (K+M)^-1
-    T_filt = zeros(T_rows, nele);
+    %Not sure if this has to be done elementwise or if the following is
+    %okay
+    
+    K_filt = zeros(nnod, nnod);
+    M_filt = zeros(nnod, nnod);
+    T_filt = zeros(nnod, nele);
     q = 1;
     for i = 1:nele
-        element_indices = edof(i,2:end); %osäker på denna
-        [~, T_filt(element_indices,i)] = flw2i4e(ex(i,:), ey(i,:), ep, eye(3), q);
+        ele_ind = enod(i,2:end); %This should be correct - rho only affects these indices.
+        [K_filt_ele, T_filt_ele] = flw2i4e(ex(i,:), ey(i,:), ep_filt, eye(2), q);
+        T_filt(ele_ind,i) = T_filt_ele;
+        K_filt(ele_ind, ele_ind) = K_filt(ele_ind, ele_ind) + K_filt_ele;
+        M_filt_ele = flw2i4m(ex,ey,1); 
+        M_filt(ele_ind, ele_ind) = M_filt(ele_ind, ele_ind) + M_filt_ele;
     end
+    
+    drhotildedrho = (K_filt+M_filt)\T_filt;
 end
 
 res = inf;
-x = M*x;
+
 
 while res > TOL
     
@@ -199,26 +215,46 @@ while res > TOL
    nbr_runs = nbr_runs + 1;
    %% Calculate the new K and corresponding u
    tic
-   K = getK_sheet(K_all, x, q, edof, nele, ndof);
+   if filter_case == 3
+        K = zeros(ndof, ndof);
+        ep_K = [1,t,3];
+        for i = 1:nele
+            Ke = plani4e_rho(ex(i,:),ey(i,:),ep_K,D,x(enod(i,2:end))',q);
+            edof_ele = edof(i, 2:end);
+            K(edof_ele, edof_ele) = K(edof_ele, edof_ele) + Ke;
+        end
+   else
+        K = getK_sheet(K_all, x, q, edof, nele, ndof);
+   end
    times(nbr_runs,1) = toc;
    
    tic
    u = solveq(K,F,bc);
    times(nbr_runs,2) = toc;
    %% Calculate derivatives
-   C = zeros(nele, 1);
    
-   tic 
-   for i = 1:nele
-       edof_ele = edof(i, 2:end);
-       
-       u_ele = u(edof_ele);
-       Ke0 = K_all{i};
-       C(i) = (u_ele'*q*x(i)^(q-1)*Ke0*u_ele)/ae;
+   tic
+   if (filter_case == 1 || filter_case ==2)
+       C = zeros(nele, 1);
+       for i = 1:nele
+           edof_ele = edof(i, 2:end);
+
+           u_ele = u(edof_ele);
+           Ke0 = K_all{i};
+           C(i) = (u_ele'*q*x(i)^(q-1)*Ke0*u_ele)/ae;
+       end
+       C = M'*C;
+   elseif filter_case == 3
+       dgdr = zeros(nnod, 1);
+       ep_dg = [1, t,3];
+       for i = 1:nele
+           ele_ind = enod(i, 2:end);
+           dgdr_ele = getdgdrhotilde_el(ex(i,:),ey(i,:),ep_dg,D,u(edof(i,2:end))',x(ele_ind)',q);
+           dgdr(ele_ind) = dgdr(ele_ind) + dgdr_ele;
+       end
+       C = drhotildedrho'*dgdr;
    end
-   
-   C = M'*C;
-   
+      
    times(nbr_runs,3) = toc;
    
    tic

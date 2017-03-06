@@ -30,6 +30,9 @@
 
 %(Hur väljs alpha?)
 
+%har ni råkat skriva fel med eq i plani4e_rho (ska det egentligen vara en
+% förklaring om q (=3 i vårt fall)?
+
 % Vad förväntar man sig för typ av konvergens? På coarse mesh blir det räta
 % linjer då semilogy(res) plottas, men på fine mesh så blir de inte räta
 % (med positiv andraderivata), så konvergenshastigheten minskas hela tiden.
