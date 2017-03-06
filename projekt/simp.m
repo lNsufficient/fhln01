@@ -4,7 +4,7 @@ addpath('../calfem-3.4/fem/')
 
 load_coarse = 1;
 filter_case = 3;
-start_case = 3;
+start_case = 1;
 
 if load_coarse
     load MBBCoarseMesh
@@ -65,13 +65,8 @@ D = E/(1-nu^2)*[1 nu 0; nu 1 0; 0 0 (1-nu)/2];
 %% Set up the K matrix. 
 ep = [1, t];
 
+xdim = nele;
 
-
-if filter_case == 3
-    xdim = nnod;
-else
-    xdim = nele;
-end
 if start_case == 1
     x = 0.4*ones(xdim, 1);
 elseif start_case == 2
@@ -199,11 +194,12 @@ elseif filter_case == 3
         [K_filt_ele, T_filt_ele] = flw2i4e(ex(i,:), ey(i,:), ep_filt, eye(2), q);
         T_filt(ele_ind,i) = T_filt_ele;
         K_filt(ele_ind, ele_ind) = K_filt(ele_ind, ele_ind) + K_filt_ele;
-        M_filt_ele = flw2i4m(ex,ey,1); 
+        M_filt_ele = flw2i4m(ex(i,:),ey(i,:),1); 
         M_filt(ele_ind, ele_ind) = M_filt(ele_ind, ele_ind) + M_filt_ele;
     end
     
-    drhotildedrho = (K_filt+M_filt)\T_filt;
+    M = (K_filt*r^2+M_filt)\T_filt;
+    rho_tilde = M*x;
 end
 
 res = inf;
@@ -219,7 +215,7 @@ while res > TOL
         K = zeros(ndof, ndof);
         ep_K = [1,t,3];
         for i = 1:nele
-            Ke = plani4e_rho(ex(i,:),ey(i,:),ep_K,D,x(enod(i,2:end))',q);
+            Ke = plani4e_rho(ex(i,:),ey(i,:),ep_K,D,rho_tilde(enod(i,2:end))',q);
             edof_ele = edof(i, 2:end);
             K(edof_ele, edof_ele) = K(edof_ele, edof_ele) + Ke;
         end
@@ -249,10 +245,10 @@ while res > TOL
        ep_dg = [1, t,3];
        for i = 1:nele
            ele_ind = enod(i, 2:end);
-           dgdr_ele = getdgdrhotilde_el(ex(i,:),ey(i,:),ep_dg,D,u(edof(i,2:end))',x(ele_ind)',q);
+           dgdr_ele = getdgdrhotilde_el(ex(i,:),ey(i,:),ep_dg,D,u(edof(i,2:end))',rho_tilde(ele_ind)',q);
            dgdr(ele_ind) = dgdr(ele_ind) + dgdr_ele;
        end
-       C = drhotildedrho'*dgdr;
+       C = M'*dgdr/ae;
    end
       
    times(nbr_runs,3) = toc;
@@ -275,7 +271,11 @@ while res > TOL
 %     
 %     disp(sprintf('Current run was: %d', nbr_runs));
     %% Filter the design variables
-    x = M*x;
+    if filter_case == 3
+        rho_tilde = M*x;
+    else
+        x = M*x; %rho_tilde could have been used in all cases, we guess.
+    end
 
 
     res = norm(x-x_old,2);
@@ -288,7 +288,9 @@ end
 
 %% Plot the displacements
 %Filter the optimal x
-x = M*x;
+
+%THE FOLLOWING LINE MIGHT BE NEEDED IN filter_case 1 AND 2.
+%x = M*x;
 
 x_opt = x;
 K = getK_sheet(K_all, x, q, edof, nele, ndof);
