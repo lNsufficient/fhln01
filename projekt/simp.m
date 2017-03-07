@@ -2,8 +2,8 @@ clear;
 
 addpath('../calfem-3.4/fem/')
 
-load_coarse = 1;
-filter_case = 3;
+load_coarse = 0;
+filter_case = 2;
 start_case = 1;
 
 if load_coarse
@@ -161,7 +161,7 @@ if filter_case == 1
     M = eye(nele);
 elseif filter_case == 2;
     M = zeros(nele, nele);
-    R = w*2;
+    R = w*1.5;
     for i = 1:nele
         coord_ele = coord_mean(i,:);
         %This could have been done more efficient, dist(a,b) = dist(b,a)...
@@ -177,9 +177,10 @@ elseif filter_case == 2;
             colorbar;
         end
     end 
+    M = sparse(M);
     x = M*x;
 elseif filter_case == 3
-    r = 2*w;
+    r = w*1.2;
     ep_filt = [1, 3];
     
     %Not sure if this has to be done elementwise or if the following is
@@ -188,10 +189,10 @@ elseif filter_case == 3
     K_filt = zeros(nnod, nnod);
     M_filt = zeros(nnod, nnod);
     T_filt = zeros(nnod, nele);
-    q = 1;
+
     for i = 1:nele
         ele_ind = enod(i,2:end); %This should be correct - rho only affects these indices.
-        [K_filt_ele, T_filt_ele] = flw2i4e(ex(i,:), ey(i,:), ep_filt, eye(2), q);
+        [K_filt_ele, T_filt_ele] = flw2i4e(ex(i,:), ey(i,:), ep_filt, eye(2), 1);
         T_filt(ele_ind,i) = T_filt_ele;
         K_filt(ele_ind, ele_ind) = K_filt(ele_ind, ele_ind) + K_filt_ele;
         M_filt_ele = flw2i4m(ex(i,:),ey(i,:),1); 
@@ -222,6 +223,7 @@ while res > TOL
    else
         K = getK_sheet(K_all, x, q, edof, nele, ndof);
    end
+   K = sparse(K);
    times(nbr_runs,1) = toc;
    
    tic
@@ -294,7 +296,7 @@ end
 
 x_opt = x;
 if filter_case == 3
-    K = K;
+    K = K; %WE SHOULD RECALCULATE THE K MATRIX HERE WHEN EVERYTHING WORKS!
 else
     K = getK_sheet(K_all, x, q, edof, nele, ndof);
 end
@@ -313,17 +315,18 @@ title(sprintf('Deformation of optimized structure,\n magnification factor %d',fa
 figure(4);
 clf;
 
-fill(ex', ey', x)
+fill([ex' -ex'], [ey' ey'], [x; x], 'linestyle', 'none')
 colorbar;
 
 
 %% Plot the residual
 figure(5);
 clf;
-subplot(2,1,1)
-plot(Res);
-subplot(2,1,2)
+% subplot(2,1,1)
+% plot(Res);
+% subplot(2,1,2)
 semilogy(Res)
+xlabel('Iteration number');
 
 %%
 figure(6)

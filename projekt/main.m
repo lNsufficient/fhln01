@@ -1,7 +1,7 @@
 clear;
 
 addpath('..\calfem-3.4\')
-addpath('../calfem-3.4/')
+addpath('../calfem-3.4/fem/')
 
 run_case = 1;
 
@@ -180,6 +180,6 @@ myeldisp2(ex_zero, ey_zero, ed, plotpar, magnfac, x(zero_ind), fac);
 
 %% Investigates values for sigma
 other_ind = find(errors == 0); %We find the indecis of elements in the correct interval for A
-deviation = norm(sigma(other_ind)-sqrt(lambdastar/E), inf) %This should be zero. 
+deviation = norm(abs(sigma(other_ind))-sqrt(lambdastar*E), inf) %This should be zero. 
 %sqrt(lambdastar/E) is very small compared to sigma!!
 save('current_best', 'x', 'nbr_runs');
