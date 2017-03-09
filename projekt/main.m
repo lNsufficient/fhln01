@@ -141,7 +141,7 @@ clf;
 myeldisp2(ex, ey, ed, plotpar, magnfac, x, fac); %Plot of optimized structure.
 
 %% Calculate stresses
-ep = [ones(nele, 1)*E, x]; %Är detta rätt? 
+ep = [ones(nele, 1)*E, x]; 
 
 es = zeros(size(x));
 for i = 1:nele
