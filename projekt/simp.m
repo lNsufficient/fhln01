@@ -2,7 +2,7 @@ clear;
 
 addpath('../calfem-3.4/fem/')
 
-load_coarse = 0;
+load_coarse = 1;
 filter_case = 2;
 start_case = 1;
 
@@ -131,7 +131,6 @@ else
 end
 %TOL = 1e-17; %Remember to compare this value to the current value of A_min.
 %TOL = 1e-8; %Fewer elements hit A_min as loop breaks before.
-tol_c = 1e-6; %This is only for debugging purposes.
 
 lambda_min = 1e-9;
 lambda_max = 1e5;
@@ -142,7 +141,8 @@ nbr_runs = 0;
 
 %% Optimization
 Res = [];
-
+G0 = F'*u;
+G1 = g1(ae*ones(nele, 1), x, V_max);
 
 
 
@@ -283,9 +283,17 @@ while res > TOL
     res = norm(x-x_old,2);
     disp(res)
     Res = [Res; res];
+    G0 = [G0; F'*u];
+    G1 = [G1; g1(ae*ones(nele, 1), x, V_max)];
 end
 
+if load_coarse
+    str = 'coarse';
+else
+    str = 'fine';
+end
 
+savestr = sprintf('%s_filter_%d_q_%d_alpha_%d_res_%1.2g_nbrRuns_%d', str, filter_case, q, alpha, Res(end), nbr_runs);
 
 
 %% Plot the displacements
@@ -334,6 +342,14 @@ clf
 hist(x);
 save_str = sprintf('coarse_%d_TOL_%2.2g_alpha_%d', load_coarse, TOL, alpha)
 savefig(sprintf('%s.fig',save_str))
+
+%%
+figure(7)
+
+subplot(1, 2, 1)
+plot(G0)
+subplot(1, 2, 2)
+plot(G1)
 
 %% Save optimal x
 x_opt = x;
