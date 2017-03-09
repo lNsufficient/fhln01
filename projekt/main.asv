@@ -169,6 +169,6 @@ myeldisp2(ex_zero, ey_zero, ed, plotpar, magnfac, x(zero_ind), fac);
 
 %% Investigates values for sigma
 other_ind = find(errors == 0); %We find the indecis of elements in the correct interval for A, i.e.
-%indeces of the elements that does neither reach A_max nor A_min.
+%indeces of the elements that does neither reach up
 deviation = norm(abs(sigma(other_ind))-sqrt(lambdastar*E), inf) %This should be zero. 
 save('current_best', 'x', 'nbr_runs');
