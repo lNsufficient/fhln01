@@ -3,7 +3,7 @@ clear;
 addpath('../calfem-3.4/fem/')
 
 load_coarse = 1;
-filter_case = 3;
+filter_case = 2;
 start_case = 1;
 
 if load_coarse
@@ -161,7 +161,7 @@ if filter_case == 1
     M = eye(nele);
 elseif filter_case == 2;
     M = zeros(nele, nele);
-    R = w*1.5;
+    R = w*sqrt(2);
     for i = 1:nele
         coord_ele = coord_mean(i,:);
         %This could have been done more efficient, dist(a,b) = dist(b,a)...
@@ -180,7 +180,7 @@ elseif filter_case == 2;
     M = sparse(M);
     x = M*x;
 elseif filter_case == 3
-    r = w*1.4;
+    r = w*2;
     ep_filt = [1, 3];
     
     %Not sure if this has to be done elementwise or if the following is
@@ -297,7 +297,7 @@ end
 
 savestr = sprintf('%s_filter_%d_q_%d_alpha_%d_res_%1.2g_nbrRuns_%d', str, filter_case, q, alpha, Res(end), nbr_runs);
 p_h = 3.5
-paperPpt= [345 550];
+paperPpt= [345 345*3/4];
 figurePpt = round([100, 100 paperPpt*0.48]);
 
 
@@ -356,6 +356,7 @@ clf;
 
 %
 fill([ex' -ex'], [ey' ey'], [x; x], 'linestyle', 'none')
+
 colorbar;
 
 %% Plot the residual
