@@ -295,10 +295,18 @@ else
     str = 'fine';
 end
 
-savestr = sprintf('%s_filter_%d_q_%d_alpha_%d_res_%1.2g_nbrRuns_%d', str, filter_case, q, alpha, Res(end), nbr_runs);
-p_h = 3.5
-paperPpt= [345 345*3/4];
-figurePpt = round([100, 100 paperPpt*0.48]);
+%savestr = sprintf('%s_filter_%d_q_%d_alpha_%d_res_%1.2g_nbrRuns_%d', str, filter_case, q, alpha, Res(end), nbr_runs);
+savestr = sprintf('%s_filter_%d_res_%1.2g_nbrRuns_%d', str, filter_case, Res(end), nbr_runs);
+outstr = sprintf('out/');
+savestr = sprintf('%s%s', outstr, savestr);
+
+% load('strNames')
+% %allstrings = savestr
+% allstrings = sprintf('%s\n%s', allstrings, savestr);
+% save('strNames','allstrings')
+paperPpt= [345 550/2];%550/2 because two pictures per page
+scalefactor = 0.49;
+figurePpt = round([100, 100 paperPpt*scalefactor]); %2 per col, 4 per row.
 
 
 %% Plot the displacements
@@ -334,57 +342,80 @@ gcf = figure(3);
 
 clf;
 
+plotpar = [1 4 0]
 eldisp2(ex,ey,ed,plotpar,fac)
 %title(sprintf('Deformation of optimized structure,\n magnification factor %d',fac), 'interpreter', 'latex');
-%set(gcf,'PaperUnits','points','PaperSize',figurePpt(3:4),'PaperPosition',figurePpt)
-set(gcf,'Position',figurePpt)
-print('-dpng','test')
+set(gcf,'PaperUnits','points','PaperSize',figurePpt(3:4),'PaperPosition',figurePpt)
+str = sprintf('%s_disps',savestr);
+print('-dpng',str)
 
 %%
 gcf = figure(4);
 clf;
-
 %
 fill([ex' -ex'], [ey' ey'], [rho_tilde' rho_tilde'], 'linestyle', 'none')
+fill(ex', ey', rho_tilde', 'linestyle', 'none')
+ylim([0, 0.1])
+xlim([-0.3, 0.3])
+xlim([-0.0, 0.3])
 colorbar;
-set(gcf,'Position',figurePpt)
-print('-dpng','test')
+set(gcf,'PaperUnits','points','PaperSize',figurePpt(3:4),'PaperPosition',figurePpt)
+str = sprintf('%s_rhotilde',savestr);
+print('-dpng',str)
 
 %%
-figure(5);
+gcf = figure(5);
 clf;
 
 %
 fill([ex' -ex'], [ey' ey'], [x; x], 'linestyle', 'none')
-
+fill(ex', ey', x, 'linestyle', 'none')
+xlim([-0.0, 0.3])
+ylim([0, 0.1])
 colorbar;
+set(gcf,'PaperUnits','points','PaperSize',figurePpt(3:4),'PaperPosition',figurePpt)
+str = sprintf('%s_rho',savestr);
+print('-dpng',str)
 
 %% Plot the residual
-figure(6);
+gcf = figure(6);
 clf;
 % subplot(2,1,1)
 % plot(Res);
 % subplot(2,1,2)
 semilogy(Res)
 xlabel('Iteration number');
-
+set(gcf,'PaperUnits','points','PaperSize',figurePpt(3:4),'PaperPosition',figurePpt)
+str = sprintf('%s_res',savestr);
+print('-dpng',str)
 %%
-figure(7)
-clf
+gcf = figure(7);
+clf;
 hist(x);
-save_str = sprintf('coarse_%d_TOL_%2.2g_alpha_%d', load_coarse, TOL, alpha)
-savefig(sprintf('%s.fig',save_str))
+set(gcf,'PaperUnits','points','PaperSize',figurePpt(3:4),'PaperPosition',figurePpt)
+str = sprintf('%s_hist',savestr);
+print('-dpng',str)
 
 %%
-figure(8)
+gcf = figure(8);
+clf;
 
-subplot(1, 2, 1)
 plot(G0)
-subplot(1, 2, 2)
+
+set(gcf,'PaperUnits','points','PaperSize',figurePpt(3:4),'PaperPosition',figurePpt)
+str = sprintf('%s_g0',savestr);
+print('-dpng',str)
+
+%%
+gcf = figure(9);
+clf;
+
 plot(G1)
 
+set(gcf,'PaperUnits','points','PaperSize',figurePpt(3:4),'PaperPosition',figurePpt)
+str = sprintf('%s_g1',savestr);
+print('-dpng',str)
 %% Save optimal x
 x_opt = x;
 
-save('simp_x_opt', 'x_opt');
 save(save_str, 'x_opt');
