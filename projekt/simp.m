@@ -3,7 +3,7 @@ clear;
 addpath('../calfem-3.4/fem/')
 
 load_coarse = 1;
-filter_case = 2;
+filter_case = 3;
 start_case = 1;
 
 if load_coarse
@@ -180,7 +180,7 @@ elseif filter_case == 2;
     M = sparse(M);
     x = M*x;
 elseif filter_case == 3
-    r = w*1.2;
+    r = w*2;
     ep_filt = [1, 3];
     
     %Not sure if this has to be done elementwise or if the following is
@@ -205,6 +205,7 @@ end
 
 res = inf;
 
+%% Optimize
 
 while res > TOL
     
@@ -287,6 +288,7 @@ while res > TOL
     G1 = [G1; g1(ae*ones(nele, 1), x, V_max)];
 end
 
+%% get the savestring
 if load_coarse
     str = 'coarse';
 else
@@ -294,13 +296,19 @@ else
 end
 
 savestr = sprintf('%s_filter_%d_q_%d_alpha_%d_res_%1.2g_nbrRuns_%d', str, filter_case, q, alpha, Res(end), nbr_runs);
+p_h = 3.5
+paperInches = [0 0 4/3.5*p_h p_h];
 
 
 %% Plot the displacements
 %Filter the optimal x
 
-%THE FOLLOWING LINE MIGHT BE NEEDED IN filter_case 1 AND 2.
-%x = M*x;
+%THE FOLLOWING LINE MIGHT BE NEEDED IN filter_case 1 AND 2. 
+%IT IS ALWAYS NEEDED MAYBE!!?!?
+x = M*x;
+if filter_case == 3
+    x = extract(enod, x);
+end
 
 x_opt = x;
 if filter_case == 3
@@ -312,18 +320,21 @@ u = solveq(K, F, bc);
 ed = extract(edof,u);
 fac = 100000;
 
-figure(3);
+gcf = figure(3);
 
 clf;
 
 eldisp2(ex,ey,ed,plotpar,fac)
-title(sprintf('Deformation of optimized structure,\n magnification factor %d',fac), 'interpreter', 'latex');
+%title(sprintf('Deformation of optimized structure,\n magnification factor %d',fac), 'interpreter', 'latex');
+set(gcf,'PaperUnits','inches','PaperSize',paperInches(3:4),'PaperPosition',paperInches)
+print('-dpng','-r100','test')
 
 %%
 figure(4);
 clf;
 
-fill([ex' -ex'], [ey' ey'], [x; x], 'linestyle', 'none')
+% 
+fill([ex' -ex'], [ey' ey'], [x' x'], 'linestyle', 'none')
 colorbar;
 
 
