@@ -74,7 +74,7 @@ elseif start_case == 2
 elseif start_case == 3
     x = 0.01*ones(xdim,1);
 elseif start_case == 4
-    load('simp_x_opt')
+    load('old_opt')
     x = x_opt;
 end
 
@@ -275,13 +275,16 @@ while res > TOL
     %     disp(sprintf('Current run was: %d', nbr_runs));
     %% Filter the design variables
     if filter_case == 3
+        rho_tilde_old = rho_tilde;
         rho_tilde = M*x;
+        res = norm(rho_tilde-rho_tilde_old,2);
     else
         x = M*x; %rho_tilde could have been used in all cases, we guess.
+        res = norm(x-x_old,2);
     end
     
     
-    res = norm(x-x_old,2);
+    
     disp(res)
     Res = [Res; res];
     G0 = [G0; F'*u];
@@ -392,6 +395,7 @@ print('-dpng',str)
 gcf = figure(7);
 clf;
 hist(x);
+hist(rho_tilde);
 set(gcf,'PaperUnits','points','PaperSize',figurePpt(3:4),'PaperPosition',figurePpt)
 str = sprintf('%s_hist',savestr);
 print('-dpng',str)
@@ -418,4 +422,5 @@ print('-dpng',str)
 %% Save optimal x
 x_opt = x;
 
-save(save_str, 'x_opt');
+save(savestr, 'x_opt');
+save('old_opt', 'x_opt');
