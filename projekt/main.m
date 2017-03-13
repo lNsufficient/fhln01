@@ -92,8 +92,9 @@ if load_old_opt
 end
 
 res = []; %Stores residual over time in the optimization loop.
-
-while norm(x - x_old,2) > TOL
+G0 = F'*u;
+%while norm(x - x_old,2) > TOL
+while nbr_runs < 380
    %% Calculate the new K and corresponding u
    K = getK(K_all, x, edof, nele, ndof); 
    u = solveq(K,F,bc);
@@ -124,6 +125,7 @@ while norm(x - x_old,2) > TOL
 %     
 %     disp(sprintf('Current run was: %d', nbr_runs));
     res = [res; norm(x-x_old,2)];
+    G0 =[G0; F'*u];
 end
 
 %% Solve the system for u
@@ -172,3 +174,22 @@ other_ind = find(errors == 0); %We find the indecis of elements in the correct i
 %indeces of the elements that does neither reach A_max nor A_min.
 deviation = norm(abs(sigma(other_ind))-sqrt(lambdastar*E), inf) %This should be zero. 
 save('current_best', 'x', 'nbr_runs');
+
+% g0_con = G0;
+% %% Save g0
+% paperPpt= [345 550/2];%550/2 because two pictures per page
+% scalefactor = 0.49;
+% figurePpt = round([100, 100 paperPpt*scalefactor]); %2 per col, 4 per row.
+% gcf = figure(10)
+% 
+% load('g0_simp.mat')
+% semilogy(G0,'b')
+% hold on;
+% semilogy(g0_con,'r')
+% l = legend('OC, $\alpha = 2$, $q = 3$', 'CONLIN');
+% set(l,'interpreter','latex');
+% ylabel('Komplians','interpreter','latex')
+% xlabel('Iteration number','interpreter','latex');
+% set(gcf,'PaperUnits','points','PaperSize',figurePpt(3:4),'PaperPosition',figurePpt)
+% str = 'g0_comp';
+% print('-dpng',str)

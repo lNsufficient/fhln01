@@ -3,7 +3,7 @@ clear;
 addpath('../calfem-3.4/fem/')
 
 load_coarse = 1;
-filter_case = 2;
+filter_case = 1;
 start_case = 1;
 
 if load_coarse
@@ -180,7 +180,7 @@ elseif filter_case == 2;
     M = sparse(M);
     x = M*x;
 elseif filter_case == 3
-    r = w*2;
+    r = w*sqrt(2);
     ep_filt = [1, 3];
     
     %Not sure if this has to be done elementwise or if the following is
@@ -207,7 +207,8 @@ res = inf;
 
 %% Optimize
 
-while res > TOL
+%while res > TOL
+while nbr_runs < 81
     
     %while nbr_runs < max_nbr_runs
     nbr_runs = nbr_runs + 1;
@@ -395,7 +396,7 @@ print('-dpng',str)
 gcf = figure(7);
 clf;
 hist(x);
-hist(rho_tilde);
+hist(rho_tilde(:));
 set(gcf,'PaperUnits','points','PaperSize',figurePpt(3:4),'PaperPosition',figurePpt)
 str = sprintf('%s_hist',savestr);
 print('-dpng',str)
